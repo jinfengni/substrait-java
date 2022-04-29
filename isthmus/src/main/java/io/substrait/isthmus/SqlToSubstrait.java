@@ -74,9 +74,10 @@ public class SqlToSubstrait {
       }
     }
 
+    long start_exec = System.currentTimeMillis();
+
     SqlParser parser = SqlParser.create(sql, SqlParser.Config.DEFAULT);
     var parsed = parser.parseQuery();
-
     VolcanoPlanner planner = new VolcanoPlanner(RelOptCostImpl.FACTORY, Contexts.of("hello"));
     RelOptCluster cluster = RelOptCluster.create(planner,new RexBuilder(factory));
 
@@ -87,6 +88,7 @@ public class SqlToSubstrait {
 
     SqlToRelConverter converter = new SqlToRelConverter(null, validator, catalogReader, cluster, StandardConvertletTable.INSTANCE, converterConfig);
     RelRoot root = converter.convertQuery(parsed, true, true);
+
     {
       var program = HepProgram.builder()
           .addRuleInstance(AggregateExpandDistinctAggregatesRule.Config.DEFAULT.toRule())
@@ -111,7 +113,10 @@ public class SqlToSubstrait {
     var plan = Plan.newBuilder();
     plan.addRelations(planRel);
     functionLookup.addFunctionsToPlan(plan);
-    return plan.build();
+    Plan subStraitPlan = plan.build();
+    long finish_exec = System.currentTimeMillis();
+    System.out.format("QACK total plan generation duration(ms) = %d, for query %s\n", (finish_exec - start_exec), sql);
+    return subStraitPlan;
   }
 
   private static final SimpleExtension.ExtensionCollection EXTENSION_COLLECTION;
