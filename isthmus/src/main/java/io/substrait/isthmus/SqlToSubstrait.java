@@ -74,7 +74,9 @@ public class SqlToSubstrait {
         new CalciteCatalogReader(rootSchema, List.of(), factory, config);
     SqlValidator validator = Validator.create(factory, catalogReader, SqlValidator.Config.DEFAULT);
 
-    return executeInner(sql, factory, validator, catalogReader);
+    RelRoot root = sqlToCalciteRelNodeInner(sql, factory, validator, catalogReader);
+
+    return executeInner(sql, root, factory, validator, catalogReader);
   }
 
   public Plan execute(String sql, List<String> tables) throws SqlParseException {
@@ -84,20 +86,46 @@ public class SqlToSubstrait {
         CalciteConnectionConfig.DEFAULT.set(CalciteConnectionProperty.CASE_SENSITIVE, "false");
     CalciteCatalogReader catalogReader =
         new CalciteCatalogReader(rootSchema, List.of(), factory, config);
+    registerCreateTables(tables, catalogReader);
     SqlValidator validator = Validator.create(factory, catalogReader, SqlValidator.Config.DEFAULT);
+
+    RelRoot root = sqlToCalciteRelNodeInner(sql, factory, validator, catalogReader);
+
+    return executeInner(sql, root, factory, validator, catalogReader);
+  }
+
+  public Rel sqlToSubstraitRel(String sql, List<String> tables) throws SqlParseException {
+    CalciteSchema rootSchema = CalciteSchema.createRootSchema(false);
+    RelDataTypeFactory factory = new JavaTypeFactoryImpl();
+    CalciteConnectionConfig config =
+        CalciteConnectionConfig.DEFAULT.set(CalciteConnectionProperty.CASE_SENSITIVE, "false");
+    CalciteCatalogReader catalogReader =
+        new CalciteCatalogReader(rootSchema, List.of(), factory, config);
+
+    registerCreateTables(tables, catalogReader);
+    SqlValidator validator = Validator.create(factory, catalogReader, SqlValidator.Config.DEFAULT);
+
+    RelRoot root = sqlToCalciteRelNodeInner(sql, factory, validator, catalogReader);
+    return SubstraitRelVisitor.convert(root, EXTENSION_COLLECTION);
+  }
+
+  private void registerCreateTables(List<String> tables, CalciteCatalogReader catalogReader)
+      throws SqlParseException {
+    SqlValidator validator =
+        Validator.create(
+            catalogReader.getTypeFactory(), catalogReader, SqlValidator.Config.DEFAULT);
     if (tables != null) {
       for (String tableDef : tables) {
-        List<DefinedTable> tList = parseCreateTable(factory, validator, tableDef);
+        List<DefinedTable> tList =
+            parseCreateTable(catalogReader.getTypeFactory(), validator, tableDef);
         for (DefinedTable t : tList) {
-          rootSchema.add(t.getName(), t);
+          catalogReader.getRootSchema().add(t.getName(), t);
         }
       }
     }
-
-    return executeInner(sql, factory, validator, catalogReader);
   }
 
-  private Plan executeInner(
+  private RelRoot sqlToCalciteRelNodeInner(
       String sql,
       RelDataTypeFactory factory,
       SqlValidator validator,
@@ -133,6 +161,17 @@ public class SqlToSubstrait {
       hepPlanner.setRoot(root.rel);
       root = root.withRel(hepPlanner.findBestExp());
     }
+
+    return root;
+  }
+
+  private Plan executeInner(
+      String sql,
+      RelRoot root,
+      RelDataTypeFactory factory,
+      SqlValidator validator,
+      CalciteCatalogReader catalogReader)
+      throws SqlParseException {
 
     // System.out.println(RelOptUtil.toString(root.rel));
     Rel pojoRel = SubstraitRelVisitor.convert(root, EXTENSION_COLLECTION);

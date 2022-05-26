@@ -6,6 +6,7 @@ import io.substrait.plan.Plan;
 import io.substrait.plan.PlanProtoConverter;
 import io.substrait.plan.ProtoPlanConverter;
 import io.substrait.proto.AggregateFunction;
+import io.substrait.relation.Rel;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.calcite.sql.parser.SqlParseException;
@@ -23,12 +24,35 @@ public class ProtoPlanConverterTest extends PlanTestBase {
     assertEquals(protoPlan1, protoPlan2);
   }
 
+  private void assertProtoRelRoundrip2(String query) throws IOException, SqlParseException {
+    SqlToSubstrait s = new SqlToSubstrait();
+    String[] values = asString("tpch/schema.sql").split(";");
+    var creates = Arrays.stream(values).filter(t -> !t.trim().isBlank()).toList();
+    io.substrait.proto.Plan protoPlan1 = s.execute(query, creates);
+
+    Rel pojoRel = s.sqlToSubstraitRel(query, creates);
+
+    String planStr1 = protoPlan1.toString();
+    Plan plan = new ProtoPlanConverter().from(protoPlan1);
+    io.substrait.proto.Plan protoPlan2 = new PlanProtoConverter().toProto(plan);
+    assertEquals(protoPlan1, protoPlan2);
+
+    // assertEquals(pojoRel.getRecordType(), plan.getRoots().get(0).getInput().getRecordType());
+    System.out.println(pojoRel.getRecordType());
+    System.out.println(plan.getRoots().get(0).getInput().getRecordType());
+  }
+
   private io.substrait.proto.Plan getProtoPlan(String query1)
       throws IOException, SqlParseException {
     SqlToSubstrait s = new SqlToSubstrait();
     String[] values = asString("tpch/schema.sql").split(";");
     var creates = Arrays.stream(values).filter(t -> !t.trim().isBlank()).toList();
     return s.execute(query1, creates);
+  }
+
+  @Test
+  public void simpleSelect() throws IOException, SqlParseException {
+    assertProtoRelRoundrip2("select l_orderkey from lineitem");
   }
 
   @Test
