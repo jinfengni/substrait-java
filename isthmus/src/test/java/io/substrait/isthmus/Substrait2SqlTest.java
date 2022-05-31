@@ -4,6 +4,7 @@ import static io.substrait.isthmus.SqlToSubstrait.EXTENSION_COLLECTION;
 
 import io.substrait.relation.Rel;
 import java.util.Arrays;
+import org.apache.calcite.config.NullCollation;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelRoot;
 import org.apache.calcite.sql.SqlDialect;
@@ -43,6 +44,53 @@ public class Substrait2SqlTest extends PlanTestBase {
         "select l_partkey + l_orderkey, l_extendedprice * 0.1 + 100.0 from lineitem where l_shipdate < date '1998-01-01' ");
   }
 
+  @Test
+  public void simpleJoin() throws Exception {
+    test(
+        "select l_partkey + l_orderkey, l_extendedprice * 0.1 + 100.0, o_orderkey from lineitem join orders on l_orderkey = o_orderkey where l_shipdate < date '1998-01-01' ");
+    test(
+        "select l_partkey + l_orderkey, l_extendedprice * 0.1 + 100.0, o_orderkey from lineitem left join orders on l_orderkey = o_orderkey where l_shipdate < date '1998-01-01' ");
+    test(
+        "select l_partkey + l_orderkey, l_extendedprice * 0.1 + 100.0, o_orderkey from lineitem right join orders on l_orderkey = o_orderkey where l_shipdate < date '1998-01-01' ");
+    test(
+        "select l_partkey + l_orderkey, l_extendedprice * 0.1 + 100.0, o_orderkey from lineitem full join orders on l_orderkey = o_orderkey where l_shipdate < date '1998-01-01' ");
+  }
+
+  @Test
+  public void simpleTestAgg() throws Exception {
+    test(
+        "select l_partkey, count(l_tax), APPROX_COUNT_DISTINCT(distinct l_discount) from lineitem group by l_partkey");
+  }
+
+  @Test
+  public void simpleTestAgg2() throws Exception {
+    test(
+        "select l_partkey, sum(l_tax), sum(distinct l_tax), avg(l_discount), avg(distinct l_discount) from lineitem group by l_partkey");
+  }
+
+  //  @Test
+  //  public void tpch_q1() throws Exception {
+  //    test(
+  //        "select\n"
+  //            + "  l_returnflag,\n"
+  //            + "  l_linestatus,\n"
+  //            + "  sum(l_quantity) as sum_qty,\n"
+  //            + "  sum(l_extendedprice) as sum_base_price,\n"
+  //            + "  sum(l_extendedprice * (1 - l_discount)) as sum_disc_price,\n"
+  //            + "  sum(l_extendedprice * (1 - l_discount) * (1 + l_tax)) as sum_charge,\n"
+  //            + "  avg(l_quantity) as avg_qty,\n"
+  //            + "  avg(l_extendedprice) as avg_price,\n"
+  //            + "  avg(l_discount) as avg_disc,\n"
+  //            + "  count(*) as count_order\n"
+  //            + "from\n"
+  //            + "  lineitem\n"
+  //            + "where\n"
+  //            + "  l_shipdate <= date '1998-12-01' \n"
+  //            + "group by\n"
+  //            + "  l_returnflag,\n"
+  //            + "  l_linestatus\n");
+  //  }
+
   private void test(String query) throws Exception {
     String[] values = asString("tpch/schema.sql").split(";");
     var creates = Arrays.stream(values).filter(t -> !t.trim().isBlank()).toList();
@@ -59,12 +107,17 @@ public class Substrait2SqlTest extends PlanTestBase {
     Rel pojoRel2 =
         SubstraitRelVisitor.convert(RelRoot.of(relnodeRoot, SqlKind.SELECT), EXTENSION_COLLECTION);
 
-    //        System.out.println("original " + pojoRel);
-    //        System.out.println("converted " + pojoRel2);
-
     Assertions.assertEquals(pojoRel, pojoRel2);
     // 4. Calcite Rel -> sql
-    System.out.println(
-        SubstraitToSql.toSql(relnodeRoot, SqlDialect.DatabaseProduct.SNOWFLAKE.getDialect()));
+
+    SqlDialect dialect =
+        new SqlDialect(
+            SqlDialect.EMPTY_CONTEXT
+                .withDatabaseProduct(SqlDialect.DatabaseProduct.SNOWFLAKE)
+                .withDatabaseProductName("SNOWFLAKE")
+                .withIdentifierQuoteString(null)
+                .withNullCollation(NullCollation.HIGH));
+
+    System.out.println(SubstraitToSql.toSql(relnodeRoot, dialect));
   }
 }

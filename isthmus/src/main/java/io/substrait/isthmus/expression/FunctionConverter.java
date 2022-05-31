@@ -84,19 +84,18 @@ abstract class FunctionConverter<
     this.signatures = matcherMap;
   }
 
-  protected Optional<SqlOperator> getSqlOperatorFromSubstraitFunc(
-      Expression.ScalarFunctionInvocation expr) {
+  public Optional<SqlOperator> getSqlOperatorFromSubstraitFunc(String key, Type outputType) {
     var resolver = getTypeBasedResolver();
-    if (!substraitFuncKeyToSqlOperatorMap.containsKey(expr.declaration().key())) {
+    if (!substraitFuncKeyToSqlOperatorMap.containsKey(key)) {
       return Optional.empty();
     }
-    var operators = substraitFuncKeyToSqlOperatorMap.get(expr.declaration().key());
+    var operators = substraitFuncKeyToSqlOperatorMap.get(key);
     // only one SqlOperator is possible
     if (operators.size() == 1) {
       return Optional.of(operators.iterator().next());
     }
     // at least 2 operators. Use output type to resolve SqlOperator.
-    String outputTypeStr = expr.outputType().accept(ToTypeString.INSTANCE);
+    String outputTypeStr = outputType.accept(ToTypeString.INSTANCE);
     var resolvedOperators =
         operators.stream()
             .filter(
@@ -111,10 +110,42 @@ abstract class FunctionConverter<
       throw new RuntimeException(
           String.format(
               "Found %d SqlOperators: %s for ScalarFunction %s: ",
-              resolvedOperators.size(), resolvedOperators, expr));
+              resolvedOperators.size(), resolvedOperators, key));
     }
     return Optional.empty();
   }
+
+  //  public Optional<SqlOperator> getAggSqlOperatorFromSubstraitFunc(
+  //      AggregateFunctionInvocation expr) {
+  //    var resolver = getTypeBasedResolver();
+  //    if (!substraitFuncKeyToSqlOperatorMap.containsKey(expr.declaration().key())) {
+  //      return Optional.empty();
+  //    }
+  //    var operators = substraitFuncKeyToSqlOperatorMap.get(expr.declaration().key());
+  //    // only one SqlOperator is possible
+  //    if (operators.size() == 1) {
+  //      return Optional.of(operators.iterator().next());
+  //    }
+  //    // at least 2 operators. Use output type to resolve SqlOperator.
+  //    String outputTypeStr = expr.outputType().accept(ToTypeString.INSTANCE);
+  //    var resolvedOperators =
+  //        operators.stream()
+  //            .filter(
+  //                operator ->
+  //                    resolver.containsKey(operator)
+  //                        && resolver.get(operator).types().contains(outputTypeStr))
+  //            .toList();
+  //    // only one SqlOperator is possible
+  //    if (resolvedOperators.size() == 1) {
+  //      return Optional.of(resolvedOperators.get(0));
+  //    } else if (resolvedOperators.size() > 1) {
+  //      throw new RuntimeException(
+  //          String.format(
+  //              "Found %d SqlOperators: %s for ScalarFunction %s: ",
+  //              resolvedOperators.size(), resolvedOperators, expr));
+  //    }
+  //    return Optional.empty();
+  //  }
 
   private Map<SqlOperator, FunctionMappings.TypeBasedResolver> getTypeBasedResolver() {
     return FunctionMappings.OPERATOR_RESOLVER;
