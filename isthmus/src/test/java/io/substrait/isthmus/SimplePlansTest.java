@@ -26,8 +26,7 @@ public class SimplePlansTest extends PlanTestBase {
     String[] values = asString("tpch/schema.sql").split(";");
     var creates = Arrays.stream(values).filter(t -> !t.trim().isBlank()).toList();
     // creates.forEach(System.out::println);
-    s.execute(
-        "select l_partkey, sum(distinct L_ORDERKEY) from lineitem group by l_partkey ", creates);
+    s.execute("select l_partkey, sum(L_ORDERKEY) from lineitem group by l_partkey ", creates);
   }
 
   @Test
