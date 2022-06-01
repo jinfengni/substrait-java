@@ -214,7 +214,9 @@ public class SubstraitRelNodeConverter extends AbstractRelVisitor<RelNode, Runti
   public RelNode visitFallback(Rel rel) throws RuntimeException {
     throw new UnsupportedOperationException(
         String.format(
-            "Rel $ of type %s not handled by visitor type %s.",
-            rel, rel.getClass().getCanonicalName(), this.getClass().getCanonicalName()));
+            "[Debug] Rel %s of type %s not handled by visitor type %s.",
+            rel.getRecordType(),
+            rel.getClass().getCanonicalName(),
+            this.getClass().getCanonicalName()));
   }
 }
