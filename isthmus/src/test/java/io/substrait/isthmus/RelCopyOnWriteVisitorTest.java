@@ -9,10 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.substrait.expression.AggregateFunctionInvocation;
 import io.substrait.function.SimpleExtension;
-import io.substrait.plan.ImmutablePlan;
-import io.substrait.plan.ImmutableRoot;
-import io.substrait.plan.Plan;
-import io.substrait.plan.ProtoPlanConverter;
+import io.substrait.plan.*;
 import io.substrait.relation.Aggregate;
 import io.substrait.relation.NamedScan;
 import io.substrait.relation.Rel;
@@ -22,6 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.junit.jupiter.api.Test;
 
@@ -103,6 +101,29 @@ public class RelCopyOnWriteVisitorTest extends PlanTestBase {
     assertEquals(2, new CountApproxCountDistinct().getApproxCountDistincts(newPlan));
     assertEquals(0, new CountCountDistinct().getCountDistincts(newPlan));
     assertPlanRoundrip(newPlan);
+  }
+
+  @Test
+  public void approximateCountDistinct() throws IOException, SqlParseException {
+    Plan oldPlan =
+        buildPlanFromQuery(
+            "select count(distinct l_discount), count(distinct l_tax) from lineitem");
+    assertEquals(2, new CountCountDistinct().getCountDistincts(oldPlan));
+    assertEquals(0, new CountApproxCountDistinct().getApproxCountDistincts(oldPlan));
+    ReplaceCountDistinctWithApprox action = new ReplaceCountDistinctWithApprox();
+    Plan newPlan = action.modify(oldPlan).orElse(oldPlan);
+    assertEquals(2, new CountApproxCountDistinct().getApproxCountDistincts(newPlan));
+    assertEquals(0, new CountCountDistinct().getCountDistincts(newPlan));
+    assertPlanRoundrip(newPlan);
+
+    // convert newPlan back to sql
+    var pojoRel = newPlan.getRoots().get(0).getInput();
+    String[] values = asString("tpch/schema.sql").split(";");
+    var creates = Arrays.stream(values).filter(t -> !t.trim().isBlank()).toList();
+    RelNode relnodeRoot = new SubstraitToSql().substraitRelToCalciteRel(pojoRel, creates);
+    String newSql = SubstraitToSql.toSql(relnodeRoot);
+    assertTrue(newSql.toUpperCase().contains("APPROX_COUNT_DISTINCT"));
+    System.out.println(newSql);
   }
 
   private static class HasTableReference {

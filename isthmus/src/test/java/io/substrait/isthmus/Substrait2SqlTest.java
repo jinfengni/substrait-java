@@ -66,6 +66,11 @@ public class Substrait2SqlTest extends PlanTestBase {
   }
 
   @Test
+  public void simpleTestApproximateAggNoGB() throws Exception {
+    test("select approx_count_distinct(l_discount) from lineitem");
+  }
+
+  @Test
   public void simpleTestAgg2() throws Exception {
     test(
         "select l_partkey, sum(l_tax), sum(distinct l_tax), avg(l_discount), avg(distinct l_discount) from lineitem group by l_partkey");

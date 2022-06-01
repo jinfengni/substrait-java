@@ -75,7 +75,8 @@ public class SubstraitToSql extends SqlConverterBase {
               .withNullCollation(NullCollation.HIGH));
 
   public static String toSql(RelNode root) {
-    return toSql(root, DEFAULT_DIALECT);
+    String sql = toSql(root, SqlDialect.DatabaseProduct.SNOWFLAKE.getDialect());
+    return sql.replace("\"", "");
   }
 
   public static String toSql(RelNode root, SqlDialect dialect) {

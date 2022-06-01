@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.apache.calcite.sql.SqlOperator;
+import org.apache.calcite.sql.fun.SqlCountAggFunction;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 
 public class FunctionMappings {
@@ -13,6 +14,8 @@ public class FunctionMappings {
   public static final ImmutableList<Sig> SCALAR_SIGS;
   public static final ImmutableList<Sig> AGGREGATE_SIGS;
 
+  public static final SqlCountAggFunction SQL_OPERATOR_APPROX_COUNT_DISTINCT =
+      new SqlCountAggFunction("approx_count_distinct");
   public static final Map<SqlOperator, TypeBasedResolver> OPERATOR_RESOLVER;
 
   static {
@@ -43,6 +46,7 @@ public class FunctionMappings {
             .add(
                 s(SqlStdOperatorTable.SUM, "sum"),
                 s(SqlStdOperatorTable.COUNT, "count"),
+                s(SQL_OPERATOR_APPROX_COUNT_DISTINCT, "approx_count_distinct"),
                 s(SqlStdOperatorTable.AVG, "avg"))
             .build();
 

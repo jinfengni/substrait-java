@@ -1,6 +1,7 @@
 package io.substrait.isthmus;
 
 import static io.substrait.isthmus.SqlToSubstrait.EXTENSION_COLLECTION;
+import static io.substrait.isthmus.expression.FunctionMappings.SQL_OPERATOR_APPROX_COUNT_DISTINCT;
 
 import io.substrait.function.SimpleExtension;
 import io.substrait.isthmus.expression.AggregateFunctionConverter;
@@ -178,23 +179,28 @@ public class SubstraitRelNodeConverter extends AbstractRelVisitor<RelNode, Runti
     RelDataType returnType =
         TypeConverter.convert(relOptCluster.getTypeFactory(), measure.getFunction().getType());
 
+    boolean approximate = false;
     if (operator.get() == SqlStdOperatorTable.COUNT) {
       aggFunction = SqlStdOperatorTable.COUNT;
     } else if (operator.get() == SqlStdOperatorTable.SUM) {
       aggFunction = SqlStdOperatorTable.SUM;
     } else if (operator.get() == SqlStdOperatorTable.AVG) {
       aggFunction = SqlStdOperatorTable.AVG;
+    } else if (operator.get() == SQL_OPERATOR_APPROX_COUNT_DISTINCT) {
+      aggFunction = SqlStdOperatorTable.COUNT;
+      approximate = true;
+      distinct = true;
     } else {
       throw new UnsupportedOperationException(
           String.format(
-              "Unsupported agg operator % for agg function ",
+              "Unsupported agg operator %s for agg function %s",
               operator.get(), measure.getFunction().declaration().name()));
     }
 
     return AggregateCall.create(
         aggFunction,
         distinct,
-        false,
+        approximate,
         false,
         argIndex,
         -1,
