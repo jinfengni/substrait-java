@@ -12,7 +12,10 @@ plugins {
 
 publishing { publications { create<MavenPublication>("maven") { from(components["java"]) } } }
 
-repositories { mavenCentral() }
+repositories {
+  mavenCentral()
+  mavenLocal()
+}
 
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(17)) } }
 
@@ -32,7 +35,10 @@ val submodulesUpdate by
   }
 
 allprojects {
-  repositories { mavenCentral() }
+  repositories {
+    mavenCentral()
+    mavenLocal()
+  }
 
   tasks.configureEach<Test> { useJUnitPlatform() }
   tasks.withType<JavaCompile> { dependsOn(submodulesUpdate) }

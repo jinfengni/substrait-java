@@ -61,7 +61,7 @@ class SqlConverterBase {
     parserConfig = SqlParser.Config.DEFAULT.withParserFactory(SqlDdlParserImpl.FACTORY);
   }
 
-  protected static final SimpleExtension.ExtensionCollection EXTENSION_COLLECTION;
+  public static final SimpleExtension.ExtensionCollection EXTENSION_COLLECTION;
 
   static {
     SimpleExtension.ExtensionCollection defaults =

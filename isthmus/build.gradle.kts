@@ -29,6 +29,8 @@ dependencies {
   implementation("com.google.code.findbugs:jsr305:3.0.2")
   implementation("com.github.ben-manes.caffeine:caffeine:3.0.4")
   implementation("org.immutables:value-annotations:2.8.8")
+  implementation("io.trino:trino-main:386-SNAPSHOT")
+  implementation("io.trino:trino-tpch:386-SNAPSHOT")
 }
 
 graal {
